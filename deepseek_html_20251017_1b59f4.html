@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>زر حذف من حياتي</title>
+    <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'El Messiri', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 700px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 40px 35px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 5px;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+        }
+        
+        h1 {
+            font-size: 3.2rem;
+            margin-bottom: 15px;
+            background: linear-gradient(45deg, #ff9a9e, #fad0c4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            font-size: 1.4rem;
+            margin-bottom: 35px;
+            color: #d1d1e0;
+            font-weight: 500;
+        }
+        
+        textarea {
+            width: 100%;
+            height: 180px;
+            padding: 20px;
+            border-radius: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            background: rgba(0, 0, 0, 0.25);
+            color: white;
+            font-size: 1.2rem;
+            resize: none;
+            margin-bottom: 25px;
+            transition: all 0.4s ease;
+            font-family: 'El Messiri', sans-serif;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
+            background: rgba(0, 0, 0, 0.35);
+        }
+        
+        textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .delete-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            font-size: 1.4rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            box-shadow: 0 7px 20px rgba(255, 107, 107, 0.4);
+            margin-bottom: 35px;
+            position: relative;
+            overflow: hidden;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .delete-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(255, 107, 107, 0.6);
+            background: linear-gradient(45deg, #ff5252, #ff7b7b);
+        }
+        
+        .delete-btn:active {
+            transform: translateY(2px);
+        }
+        
+        .delete-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        .delete-btn:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: scale(20, 20);
+                opacity: 0;
+            }
+        }
+        
+        .message {
+            display: none;
+            font-size: 1.8rem;
+            margin-top: 25px;
+            padding: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            animation: fadeIn 2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            line-height: 1.8;
+            font-weight: 600;
+            color: #f8f8f8;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* تأثيرات الحذف */
+        .smoke {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+        }
+        
+        .burn-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle, rgba(255,100,0,0.7) 0%, rgba(255,50,0,0) 70%);
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+        }
+        
+        .trash-can {
+            position: fixed;
+            bottom: -100px;
+            right: 50%;
+            transform: translateX(50%);
+            width: 120px;
+            height: 120px;
+            background: #444;
+            border-radius: 10px 10px 0 0;
+            display: none;
+            z-index: 10;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        .trash-can:before {
+            content: '';
+            position: absolute;
+            top: -25px;
+            left: 10px;
+            width: 100px;
+            height: 25px;
+            background: #555;
+            border-radius: 8px 8px 0 0;
+        }
+        
+        .trash-lid {
+            position: absolute;
+            top: -25px;
+            left: 10px;
+            width: 100px;
+            height: 25px;
+            background: #666;
+            border-radius: 8px 8px 0 0;
+            transform-origin: left center;
+            transform: rotate(0deg);
+            transition: transform 0.5s ease;
+        }
+        
+        .falling-text {
+            position: absolute;
+            font-size: 1.3rem;
+            color: white;
+            z-index: 9;
+            pointer-events: none;
+            font-weight: 500;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            font-size: 1.1rem;
+            color: #aaa;
+            max-width: 600px;
+            line-height: 1.7;
+        }
+        
+        /* تصميم النجوم في الخلفية */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle 5s infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.2; }
+            50% { opacity: 1; }
+        }
+        
+        /* تصميم متجاوب */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            
+            .subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .container {
+                padding: 30px 25px;
+            }
+            
+            .delete-btn {
+                padding: 16px 40px;
+                font-size: 1.2rem;
+            }
+            
+            .message {
+                font-size: 1.5rem;
+                padding: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .subtitle {
+                font-size: 1.1rem;
+            }
+            
+            textarea {
+                height: 150px;
+                padding: 15px;
+                font-size: 1.1rem;
+            }
+            
+            .delete-btn {
+                padding: 14px 35px;
+                font-size: 1.1rem;
+            }
+            
+            .message {
+                font-size: 1.3rem;
+                padding: 18px;
+            }
+        }
+        
+        /* تحسينات للتأثيرات */
+        .shred-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            display: none;
+            z-index: 10;
+        }
+        
+        .shred-line {
+            position: absolute;
+            background: linear-gradient(to right, rgba(255,255,255,0.8), transparent);
+            width: 5px;
+            height: 100%;
+            animation: shred 1.5s forwards;
+        }
+        
+        @keyframes shred {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- النجوم في الخلفية -->
+    <div class="stars" id="stars"></div>
+    
+    <div class="container">
+        <h1>زر حذف من حياتي</h1>
+        <p class="subtitle">اكتب شيئًا تندم عليه وتريد مسحه من ذاكرتك</p>
+        
+        <textarea id="regretText" placeholder="اكتب هنا الموقف، القرار، أو العلاقة التي تندم عليها..."></textarea>
+        
+        <button id="deleteBtn" class="delete-btn">حذف للأبد</button>
+        
+        <div id="message" class="message">
+            مفيش زر حذف في الحياة، بس ممكن تبدأ صفحة جديدة النهاردة
+        </div>
+    </div>
+    
+    <!-- تأثيرات الحذف -->
+    <div id="smoke" class="smoke"></div>
+    <div id="burnEffect" class="burn-effect"></div>
+    <div id="trashCan" class="trash-can">
+        <div class="trash-lid"></div>
+    </div>
+    <div id="shredEffect" class="shred-effect"></div>
+    
+    <div class="footer">
+        تذكر: الأخطاء جزء من رحلتنا، والتعلم منها هو ما يجعلنا أفضل. كل تجربة تترك أثرًا فينا، لكننا نستطيع دائمًا اختيار كيف نتعامل مع هذا الأثر.
+    </div>
+
+    <script>
+        // تهيئة Firebase
+        const firebaseConfig = {
+            // هنا ضع إعدادات Firebase الخاصة بك
+            apiKey: "your-api-key",
+            authDomain: "your-project-id.firebaseapp.com",
+            projectId: "your-project-id",
+            storageBucket: "your-project-id.appspot.com",
+            messagingSenderId: "your-sender-id",
+            appId: "your-app-id"
+        };
+
+        // تهيئة Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const deleteBtn = document.getElementById('deleteBtn');
+            const regretText = document.getElementById('regretText');
+            const message = document.getElementById('message');
+            const smoke = document.getElementById('smoke');
+            const burnEffect = document.getElementById('burnEffect');
+            const trashCan = document.getElementById('trashCan');
+            const shredEffect = document.getElementById('shredEffect');
+            const starsContainer = document.getElementById('stars');
+            
+            // إنشاء النجوم في الخلفية
+            createStars();
+            
+            // أصوات التأثيرات (سيتم استخدام أصوات افتراضية)
+            const deleteSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+            const burnSound = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA==');
+            
+            deleteBtn.addEventListener('click', async function() {
+                if (regretText.value.trim() === '') {
+                    alert('من فضلك اكتب شيئاً تريد حذفه أولاً');
+                    return;
+                }
+                
+                // تعطيل الزر والنص
+                deleteBtn.disabled = true;
+                regretText.disabled = true;
+                
+                // حفظ النص في Firebase
+                try {
+                    await saveRegretToFirebase(regretText.value);
+                    console.log('تم حفظ النص في قاعدة البيانات');
+                } catch (error) {
+                    console.error('خطأ في حفظ النص:', error);
+                }
+                
+                // اختيار تأثير عشوائي
+                const effects = ['smoke', 'burn', 'trash', 'shred'];
+                const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+                
+                // تشغيل التأثير المختار
+                if (randomEffect === 'smoke') {
+                    smokeEffect();
+                } else if (randomEffect === 'burn') {
+                    burnEffectFunc();
+                } else if (randomEffect === 'trash') {
+                    trashEffect();
+                } else {
+                    shredEffectFunc();
+                }
+            });
+            
+            // تأثير الدخان
+            function smokeEffect() {
+                smoke.style.display = 'block';
+                
+                // إنشاء جزيئات الدخان
+                for (let i = 0; i < 80; i++) {
+                    setTimeout(() => createSmokeParticle(), i * 50);
+                }
+                
+                // تشغيل صوت الحذف
+                deleteSound.play();
+                
+                // إخفاء النص تدريجياً
+                let opacity = 1;
+                const fadeInterval = setInterval(() => {
+                    opacity -= 0.05;
+                    regretText.style.opacity = opacity;
+                    
+                    if (opacity <= 0) {
+                        clearInterval(fadeInterval);
+                        regretText.style.display = 'none';
+                        showMessage();
+                    }
+                }, 100);
+            }
+            
+            function createSmokeParticle() {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                // تحديد موقع البداية (وسط الزر)
+                const btnRect = deleteBtn.getBoundingClientRect();
+                const startX = btnRect.left + btnRect.width / 2;
+                const startY = btnRect.top + btnRect.height / 2;
+                
+                particle.style.left = startX + 'px';
+                particle.style.top = startY + 'px';
+                
+                // حجم عشوائي
+                const size = Math.random() * 25 + 5;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                
+                // لون الدخان
+                const gray = Math.floor(Math.random() * 100 + 100);
+                particle.style.background = `rgba(${gray}, ${gray}, ${gray}, ${Math.random() * 0.5 + 0.5})`;
+                
+                document.body.appendChild(particle);
+                
+                // حركة الجسيم
+                const moveX = (Math.random() - 0.5) * 300;
+                const moveY = -Math.random() * 250;
+                
+                particle.animate([
+                    { transform: `translate(0, 0) scale(1)`, opacity: 1 },
+                    { transform: `translate(${moveX}px, ${moveY}px) scale(0.5)`, opacity: 0 }
+                ], {
+                    duration: Math.random() * 1500 + 1000,
+                    easing: 'ease-out'
+                }).onfinish = () => {
+                    particle.remove();
+                };
+            }
+            
+            // تأثير الحرق
+            function burnEffectFunc() {
+                burnEffect.style.display = 'block';
+                
+                // تشغيل صوت الحرق
+                burnSound.play();
+                
+                // تأثير تموج النص
+                regretText.style.transition = 'all 1.5s ease';
+                regretText.style.color = '#ff6b6b';
+                regretText.style.textShadow = '0 0 10px rgba(255, 107, 107, 0.7)';
+                
+                // إضافة وميض
+                let flashCount = 0;
+                const flashInterval = setInterval(() => {
+                    regretText.style.opacity = regretText.style.opacity === '0.5' ? '1' : '0.5';
+                    flashCount++;
+                    
+                    if (flashCount > 6) {
+                        clearInterval(flashInterval);
+                        
+                        // تأثير الاختفاء
+                        regretText.style.transform = 'scale(0.1) rotate(10deg)';
+                        regretText.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            regretText.style.display = 'none';
+                            burnEffect.style.display = 'none';
+                            showMessage();
+                        }, 1000);
+                    }
+                }, 200);
+            }
+            
+            // تأثير سلة المهملات
+            function trashEffect() {
+                // إظهار سلة المهملات
+                trashCan.style.display = 'block';
+                trashCan.animate([
+                    { bottom: '-100px' },
+                    { bottom: '50px' }
+                ], {
+                    duration: 800,
+                    easing: 'ease-out'
+                });
+                
+                // فتح غطاء السلة
+                setTimeout(() => {
+                    trashCan.querySelector('.trash-lid').style.transform = 'rotate(-45deg)';
+                }, 500);
+                
+                // تكوين النص ككائن يمكن سحبه
+                const text = regretText.value;
+                const textContainer = document.createElement('div');
+                textContainer.classList.add('falling-text');
+                textContainer.textContent = text;
+                textContainer.style.left = regretText.offsetLeft + 'px';
+                textContainer.style.top = regretText.offsetTop + 'px';
+                textContainer.style.width = regretText.offsetWidth + 'px';
+                
+                document.body.appendChild(textContainer);
+                
+                // إخفاء النص الأصلي
+                regretText.style.visibility = 'hidden';
+                
+                // سحب النص إلى سلة المهملات
+                const trashRect = trashCan.getBoundingClientRect();
+                const targetX = trashRect.left + trashRect.width / 2;
+                const targetY = trashRect.top + trashRect.height / 2;
+                
+                textContainer.animate([
+                    { 
+                        transform: 'translate(0, 0) scale(1) rotate(0deg)',
+                        opacity: 1
+                    },
+                    { 
+                        transform: `translate(${targetX - textContainer.offsetLeft - textContainer.offsetWidth/2}px, 
+                                              ${targetY - textContainer.offsetTop - textContainer.offsetHeight/2}px) 
+                                    scale(0.1) rotate(360deg)`,
+                        opacity: 0
+                    }
+                ], {
+                    duration: 1500,
+                    easing: 'ease-in'
+                }).onfinish = () => {
+                    textContainer.remove();
+                    
+                    // إغلاق غطاء السلة
+                    trashCan.querySelector('.trash-lid').style.transform = 'rotate(0deg)';
+                    
+                    setTimeout(() => {
+                        trashCan.animate([
+                            { bottom: '50px' },
+                            { bottom: '-100px' }
+                        ], {
+                            duration: 800,
+                            easing: 'ease-in'
+                        }).onfinish = () => {
+                            trashCan.style.display = 'none';
+                        };
+                        
+                        // إخفاء النص الأصلي نهائياً
+                        regretText.style.display = 'none';
+                        showMessage();
+                    }, 500);
+                };
+                
+                // تشغيل صوت الحذف
+                deleteSound.play();
+            }
+            
+            // تأثير التمزيق
+            function shredEffectFunc() {
+                shredEffect.style.display = 'block';
+                
+                // إنشاء خطوط التمزيق
+                for (let i = 0; i < 20; i++) {
+                    const shredLine = document.createElement('div');
+                    shredLine.classList.add('shred-line');
+                    shredLine.style.left = Math.random() * 100 + '%';
+                    shredLine.style.animationDelay = Math.random() * 0.5 + 's';
+                    shredEffect.appendChild(shredLine);
+                }
+                
+                // تشغيل صوت الحذف
+                deleteSound.play();
+                
+                // إخفاء النص تدريجياً
+                let opacity = 1;
+                const fadeInterval = setInterval(() => {
+                    opacity -= 0.05;
+                    regretText.style.opacity = opacity;
+                    
+                    if (opacity <= 0) {
+                        clearInterval(fadeInterval);
+                        regretText.style.display = 'none';
+                        
+                        setTimeout(() => {
+                            shredEffect.style.display = 'none';
+                            // إزالة خطوط التمزيق
+                            while (shredEffect.firstChild) {
+                                shredEffect.removeChild(shredEffect.firstChild);
+                            }
+                            showMessage();
+                        }, 1500);
+                    }
+                }, 100);
+            }
+            
+            // عرض الرسالة النهائية
+            function showMessage() {
+                setTimeout(() => {
+                    message.style.display = 'block';
+                    
+                    // إعادة تعيين الموقع للاستخدام مرة أخرى
+                    setTimeout(() => {
+                        deleteBtn.disabled = false;
+                        regretText.disabled = false;
+                        regretText.style.display = 'block';
+                        regretText.style.opacity = '1';
+                        regretText.style.transform = 'scale(1) rotate(0deg)';
+                        regretText.style.visibility = 'visible';
+                        regretText.value = '';
+                        regretText.style.color = 'white';
+                        regretText.style.textShadow = 'none';
+                        message.style.display = 'none';
+                    }, 6000);
+                }, 1500);
+            }
+            
+            // إنشاء النجوم في الخلفية
+            function createStars() {
+                for (let i = 0; i < 150; i++) {
+                    const star = document.createElement('div');
+                    star.classList.add('star');
+                    
+                    const size = Math.random() * 3;
+                    star.style.width = size + 'px';
+                    star.style.height = size + 'px';
+                    
+                    star.style.left = Math.random() * 100 + 'vw';
+                    star.style.top = Math.random() * 100 + 'vh';
+                    
+                    star.style.animationDelay = Math.random() * 5 + 's';
+                    
+                    starsContainer.appendChild(star);
+                }
+            }
+            
+            // دالة لحفظ النص في Firebase
+            async function saveRegretToFirebase(regretText) {
+                try {
+                    await db.collection('regrets').add({
+                        text: regretText,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    console.log('تم حفظ النص في قاعدة البيانات');
+                } catch (error) {
+                    console.error('خطأ في حفظ النص:', error);
+                    throw error;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
